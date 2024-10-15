@@ -21,7 +21,7 @@ URxvt*color12: #8cd0d3
 URxvt*color13: #dc8cc3
 URxvt*color14: #93e0e3
 URxvt*color15: #ffffff
-urxvt.font: xft:DejavuSansMono:pixelsize=14
+URxvt.font: xft:DejavuSansMono:pixelsize=14, xft:NanumGothicCoding:pixesize-14
 URxvt.letterSpace: -1
 URxvt.geometry: 400x400
 URxvt.scrollBar: false

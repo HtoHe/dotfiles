@@ -5,7 +5,7 @@
 # this file and re-run i3-config-wizard(1).
 #
 
-exec_always --no-startup-id picom --config ~/.config/picom.conf
+exec_always --no-startup-id picom --config ~/.config/picom/picom.conf
 exec_always --no-startup-id ibus-daemon -drx 
 exec_always --no-startup-id nitrogen --restore 
 
@@ -38,7 +38,7 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
 
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
-exec --no-startup-id nm-applet
+# exec --no-startup-id nm-applet
 
 # Use pactl to adjust volume in PulseAudio.
 set $refresh_i3status killall -SIGUSR1 i3status

@@ -26,6 +26,5 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
-# system blanking setting
-xset dpms 180 0 1800
-. "$HOME/.cargo/env"
+# set go lang PATH env
+export PATH=$PATH:/usr/local/go/bin

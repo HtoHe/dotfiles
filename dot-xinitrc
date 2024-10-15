@@ -1,0 +1,7 @@
+#!/bin/bash
+
+xmodmap ~/.Xmodmap
+xrdb -merge ~/.Xresources
+
+# startx /usr/bin/i3
+exec i3

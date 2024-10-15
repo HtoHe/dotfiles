@@ -7,6 +7,10 @@
 ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 (package-initialize)
 
+;;Install packages
+;;(setq my-package-list '(zenburn-theme evil magit))
+;;(maqc #'package-install my-package-list)
+
 (load-theme 'zenburn t)
 
 ;;(add-hook 'after-init-hook 'global-company-mode)
@@ -17,6 +21,8 @@
 (evil-mode 1)
 (evil-set-undo-system 'undo-redo)
 
+(evil-collection-init '(org magit dired))
+
 ;;(global-flycheck-mode)
 
 ;;(evilem-default-keybindings "SPC")
@@ -24,6 +30,10 @@
 ;;(global-set-key (kbd "M-x") #'helm-M-x)
 ;;(global-set-key (kbd "C-x r b") #'helm-filtered-bookmarks)
 ;;(global-set-key (kbd "C-x C-f") #'helm-find-files)
+
+;;Magit seq error fix
+;;(setq package-install-upgrade-built-in t)
+;;(progn (unload-feature 'seq t) (require 'seq))
 
 ;;(require 'helm)
 ;;(helm-mode 1)
@@ -93,4 +103,5 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(zenburn-theme evil magit)))
+ '(package-selected-packages '(seq evil-collection zenburn-theme evil magit))
+ '(warning-suppress-types '((comp))))
