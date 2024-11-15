@@ -17,11 +17,13 @@
 ;;(setq company-dabbrev-downcase 0)
 ;;(setq company-idle-delay 0)
 
-(require 'evil)
-(evil-mode 1)
-(evil-set-undo-system 'undo-redo)
+;;(require 'evil)
+;;(evil-mode 1)
+;;(evil-set-undo-system 'undo-redo)
 
-(evil-collection-init '(org magit dired))
+;;(setq evil-want-keybinding nil)
+;;(when (require 'evil-collection nil t)
+ ;; (evil-collection-init '(org magit dired)))
 
 ;;(global-flycheck-mode)
 
@@ -44,15 +46,17 @@
 ;;(with-eval-after-load 'flycheck
 ;;  (flycheck-pos-tip-mode))
 
-;;(pdf-tools-install)  ; Standard activation command
-;;(pdf-loader-install) ; On demand loading, leads to faster startup time
+(require 'rust-mode)
 
-;;(use-package pdf-view-restore
-;;  :after pdf-tools
-;;  :config
-;;  (add-hook 'pdf-view-mode-hook 'pdf-view-restore-mode))
+(pdf-tools-install)  ; Standard activation command
+(pdf-loader-install) ; On demand loading, leads to faster startup time
 
-;;(setq pdf-view-restore-filename "~/.emacs.d/.pdf-view-restore")
+(use-package pdf-view-restore
+  :after pdf-tools
+  :config
+  (add-hook 'pdf-view-mode-hook 'pdf-view-restore-mode))
+
+(setq pdf-view-restore-filename "~/.emacs.d/.pdf-view-restore")
 
 ;;custom setting(ui)
 ;;(add-to-list 'default-frame-alist
@@ -66,8 +70,8 @@
 ;; (global-display-line-numbers-mode 1)
 (global-set-key (kbd "C-x /") 'global-display-line-numbers-mode)
 
-(global-display-line-numbers-mode 1)
-(visual-line-mode 1)
+;;(global-display-line-numbers-mode 1)
+;;(visual-line-mode 1)
 
 (tool-bar-mode -1)
 (menu-bar-mode -1)
@@ -81,6 +85,9 @@
 
 ;; custom setting(editing)
 (setq-default c-basic-offset 4)
+
+;; org mode setting
+(setq org-adapt-indentation t)
 
 ;;(global-undo-tree-mode)
 
@@ -103,5 +110,6 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(seq evil-collection zenburn-theme evil magit))
+ '(package-selected-packages
+   '(rust-mode pdf-view-restore pdf-tools seq zenburn-theme magit))
  '(warning-suppress-types '((comp))))

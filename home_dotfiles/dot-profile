@@ -28,3 +28,4 @@ fi
 
 # set go lang PATH env
 export PATH=$PATH:/usr/local/go/bin
+. "$HOME/.cargo/env"

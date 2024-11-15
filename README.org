@@ -23,12 +23,21 @@ This is list of package viable with using apt install.
    which needs some configuration at .bash_profile or .bashrc.
 9) [ ] ibus-hangul: Also used for typing korean. Change Input Method to Korean,
    and change preference of Korean by checking Commit in word unit and change Toggle key.
-10) [ ] tlp: Used for battery management for laptop.
+10) [ ] tlp: Used for battery management for laptop. Make sure to enable it after install,
+    by sudo tlp start. Check [[https://linrunner.de/tlp/usage/index.html][wiki]] for more info.
 11) [ ] tlp-rdw: Used for battery management with radio device managing.
     Might disable bluetooth on battery when booted.
 12) [ ] gh: Used for getting credential infomation on github.com.
     Could use private-token for alternative method.
 13) [ ] nitrogen: Used for getting background on i3wm.
+14) [ ] firefox-esr: Web browser.
+15) [ ] zip: Used for zipping.
+16) [ ] unzip: Used for unzipping.
+17) [ ] curl: Used for getting file or data.
+18) [ ] wget: Used for getting file.
+19) [ ] feh: Used for viewing image.
+20) [ ] glibc-doc: Man pages for glibc.
+21) [ ] manpages-dev: Man pages for basic C functions.
 *** Manual install
 This is list of packages that needs manual install. Some of depencies could be installed using apt.
 1) [ ] emacs: Emacs needs manual build and install. Installation is well documented, but might need
@@ -40,3 +49,14 @@ This is list of packages that needs manual install. Some of depencies could be i
 4) [ ] bluetuith: bluetuith is not presented at apt. Installation is somewhat documented, but
    you need to install bluetooth and pulseaudio-module-bluetooth package via apt and install go
    manually. Also need to move or symlink executable located at ~/go/bin/ to /usr/bin/. [[https://darkhz.github.io/bluetuith/Installation.html][Official wiki]]
+5) [ ] fastfetch: Looks cool.
+6) [ ] dwm: Alternative windows manager. Need to install dmenu for full experience.
+** System settings
+- Make poweroff usable on regular user: Default debian setting puts poweroff on /usr/sbin/ which only
+  allowed only by sudo. Copy poweroff at /usr/sbin/ to /usr/local/bin/ to allow user to access it.
+- Install korean font: Default korean font on i3 or emacs is unbearable, Install NanumGothicCoding font
+  at [[https://github.com/naver/nanumfont?tab=readme-ov-file][link]] and put this at ~/.local/share/fonts/.
+- Creating Firefox private on dmenu: Copy firefox.desktop and create firefox-private.desktop file,
+  edit Name to Firefox Private and also edit Exec to add option --private-window.
+- Disable unused services: Check 'systemd-analyze blame' to get blueprint what is staggering your
+  boot speed. On T440p, ModManager, NetworkManager-wait-online.service, and mei_me had to be disabled.
