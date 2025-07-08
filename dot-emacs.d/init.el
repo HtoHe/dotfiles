@@ -46,29 +46,31 @@
 ;;(with-eval-after-load 'flycheck
 ;;  (flycheck-pos-tip-mode))
 
-(require 'rust-mode)
+;;(require 'rust-mode)
 
-(pdf-tools-install)  ; Standard activation command
+;;(pdf-tools-install)  ; Standard activation command
 (pdf-loader-install) ; On demand loading, leads to faster startup time
 
-(use-package pdf-view-restore
-  :after pdf-tools
-  :config
-  (add-hook 'pdf-view-mode-hook 'pdf-view-restore-mode))
+;;(use-package pdf-view-restore
+;;  :after pdf-tools
+;;  :config
+;;  (add-hook 'pdf-view-mode-hook 'pdf-view-restore-mode))
 
-(setq pdf-view-restore-filename "~/.emacs.d/.pdf-view-restore")
+;;(setq pdf-view-restore-filename "~/.emacs.d/.pdf-view-restore")
 
 ;;custom setting(ui)
 ;;(add-to-list 'default-frame-alist
 ;;             '(font . "DejaVu Sans Mono-10"))
 (set-face-attribute 'default nil :family "Dejavu Sans Mono")
-(set-face-attribute 'default nil :height 90)
+(set-face-attribute 'default nil :height 130)
 (set-fontset-font t 'hangul (font-spec :name "NanumGothicCoding"))
 
 (setq ring-bell-function 'ignore)
 
 ;; (global-display-line-numbers-mode 1)
-(global-set-key (kbd "C-x /") 'global-display-line-numbers-mode)
+(global-set-key (kbd "C-x /") 'display-line-numbers-mode)
+
+(global-set-key (kbd "M-o") 'other-window)
 
 ;;(global-display-line-numbers-mode 1)
 ;;(visual-line-mode 1)
@@ -88,6 +90,9 @@
 
 ;; org mode setting
 (setq org-adapt-indentation t)
+
+(winner-mode 1)
+(repeat-mode)
 
 ;;(global-undo-tree-mode)
 
@@ -110,6 +115,5 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(rust-mode pdf-view-restore pdf-tools seq zenburn-theme magit))
+ '(package-selected-packages '(magit org-noter pdf-tools zenburn-theme))
  '(warning-suppress-types '((comp))))

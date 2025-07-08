@@ -1,8 +1,8 @@
 #!/bin/bash
 
-xmodmap ~/.Xmodmap
-xrdb -merge ~/.Xresources
+# xmodmap ~/.Xmodmap
+# xrdb -merge ~/.Xresources
 # picom -b
 
 # startx /usr/bin/i3
-exec i3
+exec dwm
