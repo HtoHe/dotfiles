@@ -59,7 +59,7 @@ def install_dwm_dependencies(packages):
     if not os.path.exists(suckless_path):
         return False, f"Suckless directory not found: {suckless_path}"
     
-    required_programs = ['dwm', 'st', 'dmenu', 'slock']
+    required_programs = ['dwm', 'st', 'dmenu', 'slock', 'slstatus']
     found_programs = []
     
     for program in required_programs:
@@ -73,12 +73,21 @@ def install_dwm_dependencies(packages):
     # Compile each program
     for program_path in found_programs:
         if os.path.isdir(program_path):
-            print(f"Compiling {os.path.basename(program_path)}...")
+            program_name = os.path.basename(program_path)
+            print(f"Compiling {program_name}...")
             try:
                 subprocess.run(['make'], cwd=program_path, check=True, capture_output=True, text=True)
-                print(f"✓ {os.path.basename(program_path)} compiled successfully")
+                print(f"✓ {program_name} compiled successfully")
             except subprocess.CalledProcessError as e:
-                return False, f"Failed to compile {os.path.basename(program_path)}: {e.stderr}"
+                return False, f"Failed to compile {program_name}: {e.stderr}"
+            
+            # Install the program
+            print(f"Installing {program_name}...")
+            try:
+                subprocess.run(['sudo', 'make', 'install'], cwd=program_path, check=True, capture_output=True, text=True)
+                print(f"✓ {program_name} installed successfully")
+            except subprocess.CalledProcessError as e:
+                return False, f"Failed to install {program_name}: {e.stderr}"
     
     return True, ""
 
