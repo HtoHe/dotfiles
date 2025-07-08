@@ -250,11 +250,11 @@ def main():
     
     # Function mapping
     functions = {
-        '0': install_basic_packages,
-        '1': install_dwm_dependencies,
-        '2': install_emacs,
-        '3': install_stow,
-        '4': install_utils
+        '0': lambda packages: install_basic_packages(packages),
+        '1': lambda packages: install_dwm_dependencies(packages),
+        '2': lambda packages: install_emacs(packages),
+        '3': lambda packages: install_stow(),
+        '4': lambda packages: install_utils(packages)
     }
     
     while True:
