@@ -170,14 +170,21 @@ def install_stow():
     # Extract
     print("Extracting GNU Stow...")
     try:
+        # First, remove any existing stow directories to avoid conflicts
+        existing_dirs = glob.glob('/tmp/stow-*')
+        for d in existing_dirs:
+            if os.path.isdir(d):
+                subprocess.run(['rm', '-rf', d], check=True)
+        
         subprocess.run(['tar', '-xzf', download_path, '-C', '/tmp'], check=True, capture_output=True, text=True)
         print("✓ GNU Stow extracted successfully")
     except subprocess.CalledProcessError as e:
         return False, f"Failed to extract GNU Stow: {e.stderr}"
     
-    # Find extracted directory
+    # Find extracted directory (should be created after extraction)
     try:
         stow_dirs = glob.glob('/tmp/stow-*')
+        stow_dirs = [d for d in stow_dirs if os.path.isdir(d)]  # Only directories
         if not stow_dirs:
             return False, "Could not find extracted Stow directory"
         extract_path = stow_dirs[0]  # Use first match
