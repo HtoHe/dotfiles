@@ -130,7 +130,7 @@ def install_emacs(packages):
     print("Configuring Emacs...")
     try:
         subprocess.run(['./configure', '--with-x-toolkit=gtk3', '--with-native-compilation', 
-                       '--with-json', '--with-tree-sitter', '--with-cairo', '--with-modules'], 
+                        '--with-json', '--with-tree-sitter', '--with-cairo', '--with-modules', '--with-xml2'], 
                       cwd=extract_path, check=True, capture_output=True, text=True)
         print("✓ Emacs configured successfully")
     except subprocess.CalledProcessError as e:
@@ -148,7 +148,8 @@ def install_emacs(packages):
     # Make check
     print("Running Emacs tests...")
     try:
-        subprocess.run(['make', 'check'], cwd=extract_path, check=True, capture_output=True, text=True)
+        nproc = subprocess.run(['nproc'], capture_output=True, text=True).stdout.strip()
+        subprocess.run(['make', 'check', f'-j{nproc}'], cwd=extract_path, check=True, capture_output=True, text=True)
         print("✓ Emacs tests passed successfully")
     except subprocess.CalledProcessError as e:
         return False, f"Failed to run Emacs tests: {e.stderr}"
