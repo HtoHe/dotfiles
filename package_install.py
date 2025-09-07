@@ -635,82 +635,175 @@ def setup_displayport_switching():
     if xrandr_path.returncode != 0:
         return False, "xrandr not installed"
     
-    # Create udev rule content
-    udev_rule_content = 'ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="/usr/local/bin/display-switch.sh"\n'
+    # Create udev rule content - improved to trigger on specific events
+    udev_rule_content = '''# DisplayPort hotplug detection
+ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="/usr/local/bin/display-switch.sh"
+# Additional rule for connector status changes
+ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card[0-9]-*", RUN+="/usr/local/bin/display-switch.sh"
+'''
     
-    # Create display switching script content
+    # Create improved display switching script content
     script_content = """#!/bin/bash
 
+# Enhanced DisplayPort auto-switching script
 # Log for debugging
 exec >> /tmp/display-switch.log 2>&1
-echo "$(date): Display switch triggered"
+echo "$(date): Display switch event triggered by udev"
+echo "$(date): Event details: ACTION=$ACTION SUBSYSTEM=$SUBSYSTEM HOTPLUG=$HOTPLUG"
 
-# Wait for X server to be available (up to 30 seconds)
+# Enhanced X server detection and user identification
 wait_for_x_server() {
-    local max_wait=30
+    local max_wait=45
     local count=0
     
+    echo "$(date): Starting X server detection..."
+    
     while [ $count -lt $max_wait ]; do
-        # Check if any X session is running
-        if pgrep -x "Xorg\|X" > /dev/null 2>&1; then
-            # Try to find active X user - multiple methods
-            # Method 1: Find user running X server
-            X_USER=$(ps aux | grep 'Xorg.*:0' | grep -v grep | awk '{print $1}' | head -1)
-            
-            if [ -z "$X_USER" ]; then
-                # Method 2: Check loginctl for active sessions
-                SESSION=$(loginctl list-sessions --no-legend | awk '$3=="active" && $5=="seat0" {print $1}' | head -1)
-                X_USER=$(loginctl show-session "$SESSION" -p Name --value 2>/dev/null)
+        # Method 1: Check for active X sessions via loginctl (most reliable)
+        if command -v loginctl >/dev/null 2>&1; then
+            ACTIVE_SESSION=$(loginctl list-sessions --no-legend | awk '$3=="active" && $4=="x11" {print $1}' | head -1)
+            if [ -n "$ACTIVE_SESSION" ]; then
+                X_USER=$(loginctl show-session "$ACTIVE_SESSION" -p Name --value 2>/dev/null)
+                DISPLAY_VAR=$(loginctl show-session "$ACTIVE_SESSION" -p Display --value 2>/dev/null)
+                if [ -n "$X_USER" ] && [ -n "$DISPLAY_VAR" ]; then
+                    export DISPLAY="$DISPLAY_VAR"
+                    export XAUTHORITY="/home/$X_USER/.Xauthority"
+                    echo "$(date): Found active X11 session: user=$X_USER, display=$DISPLAY_VAR"
+                    
+                    # Test X server accessibility with timeout
+                    if timeout 10 sudo -u "$X_USER" -E /usr/bin/xrandr --query >/dev/null 2>&1; then
+                        echo "$(date): X server accessible via loginctl method"
+                        return 0
+                    fi
+                fi
             fi
-            
-            if [ -z "$X_USER" ]; then
-                # Method 3: Check who is on tty1 (common for X sessions)
-                X_USER=$(who | grep "tty1" | awk '{print $1}' | head -1)
-            fi
-            
-            if [ -n "$X_USER" ]; then
-                # Test if X server is accessible
+        fi
+        
+        # Method 2: Look for X processes and match with users
+        X_PROC=$(pgrep -f "Xorg.*:0\|X.*:0" | head -1)
+        if [ -n "$X_PROC" ]; then
+            X_USER=$(ps -o user= -p "$X_PROC" 2>/dev/null)
+            if [ -n "$X_USER" ] && [ "$X_USER" != "root" ]; then
                 export DISPLAY=:0
                 export XAUTHORITY="/home/$X_USER/.Xauthority"
+                echo "$(date): Found X process: user=$X_USER, pid=$X_PROC"
                 
-                if timeout 5 /usr/bin/xrandr --query > /dev/null 2>&1; then
-                    echo "$(date): X server ready, user: $X_USER"
+                # Test X server accessibility
+                if timeout 10 sudo -u "$X_USER" -E /usr/bin/xrandr --query >/dev/null 2>&1; then
+                    echo "$(date): X server accessible via process method"
                     return 0
                 fi
             fi
         fi
         
-        echo "$(date): Waiting for X server... ($count/$max_wait)"
-        sleep 1
+        # Method 3: Check for users logged into graphical sessions
+        for user in $(who | awk '$2 ~ /^:[0-9]/ || $2 ~ /^tty[0-9]/ {print $1}' | sort -u); do
+            if [ -f "/home/$user/.Xauthority" ]; then
+                export DISPLAY=:0
+                export XAUTHORITY="/home/$user/.Xauthority"
+                echo "$(date): Trying user from who output: $user"
+                
+                if timeout 10 sudo -u "$user" -E /usr/bin/xrandr --query >/dev/null 2>&1; then
+                    X_USER="$user"
+                    echo "$(date): X server accessible via who method, user=$user"
+                    return 0
+                fi
+            fi
+        done
+        
+        echo "$(date): Waiting for X server... attempt $((count + 1))/$max_wait"
+        sleep 2
         count=$((count + 1))
     done
     
-    echo "$(date): Timeout waiting for X server"
+    echo "$(date): ERROR: Timeout waiting for accessible X server after $max_wait attempts"
     return 1
 }
 
+# Function to perform display switching with better error handling
+perform_display_switch() {
+    local user="$1"
+    
+    echo "$(date): Performing display switch as user: $user"
+    
+    # Check current display configuration
+    local current_displays
+    current_displays=$(timeout 10 sudo -u "$user" -E /usr/bin/xrandr 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "$(date): ERROR: Failed to query current display configuration"
+        return 1
+    fi
+    
+    echo "$(date): Current display status:"
+    echo "$current_displays" | grep -E "(connected|disconnected)" | while read line; do
+        echo "$(date):   $line"
+    done
+    
+    # Check for connected DisplayPort
+    local dp_outputs
+    dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])* connected" | awk '{print $1}')
+    
+    if [ -n "$dp_outputs" ]; then
+        # DisplayPort connected - switch to external display
+        local primary_dp
+        primary_dp=$(echo "$dp_outputs" | head -1)
+        echo "$(date): DisplayPort detected: $primary_dp"
+        echo "$(date): Switching to external DisplayPort display"
+        
+        # Switch to DisplayPort and turn off laptop display
+        if timeout 15 sudo -u "$user" -E /usr/bin/xrandr --output eDP-1 --off --output "$primary_dp" --auto --primary 2>/dev/null; then
+            echo "$(date): SUCCESS: Switched to DisplayPort $primary_dp"
+        else
+            echo "$(date): ERROR: Failed to switch to DisplayPort $primary_dp"
+            return 1
+        fi
+    else
+        # No DisplayPort connected - switch back to laptop display
+        echo "$(date): No DisplayPort detected, switching to laptop display"
+        
+        # Turn off all DisplayPort outputs and enable laptop display
+        local all_dp_outputs
+        all_dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])*" | awk '{print $1}')
+        
+        for dp in $all_dp_outputs; do
+            timeout 10 sudo -u "$user" -E /usr/bin/xrandr --output "$dp" --off 2>/dev/null
+            echo "$(date): Turned off DisplayPort: $dp"
+        done
+        
+        # Enable laptop display
+        if timeout 15 sudo -u "$user" -E /usr/bin/xrandr --output eDP-1 --auto --primary 2>/dev/null; then
+            echo "$(date): SUCCESS: Switched to laptop display (eDP-1)"
+        else
+            echo "$(date): ERROR: Failed to switch to laptop display"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Main execution
+echo "$(date): ==================================="
+echo "$(date): DisplayPort Auto-Switch Starting"
+echo "$(date): ==================================="
+
 # Wait for X server to be available
 if ! wait_for_x_server; then
-    echo "$(date): X server not available, exiting"
+    echo "$(date): FATAL: X server not accessible, aborting"
     exit 1
 fi
 
-echo "$(date): X server accessible, proceeding with display switch"
-
-# Display switching logic
-if /usr/bin/xrandr | grep -E "DP-[0-9](-[0-9])* connected"; then
-    # Find the connected DisplayPort output
-    DP_OUTPUT=$(/usr/bin/xrandr | grep -E "DP-[0-9](-[0-9])* connected" | awk '{print $1}')
-    echo "$(date): Switching to DisplayPort: $DP_OUTPUT"
-    /usr/bin/xrandr --output eDP-1 --off --output "$DP_OUTPUT" --auto --primary
+# Perform the display switch
+if perform_display_switch "$X_USER"; then
+    echo "$(date): Display switch completed successfully"
 else
-    # Turn off any DisplayPort outputs and enable eDP-1
-    echo "$(date): Switching back to laptop display"
-    /usr/bin/xrandr | grep -E "DP-[0-9](-[0-9])*" | awk '{print $1}' | xargs -I {} /usr/bin/xrandr --output {} --off
-    /usr/bin/xrandr --output eDP-1 --auto --primary
+    echo "$(date): Display switch failed"
+    exit 1
 fi
 
-echo "$(date): Display switch completed"
+echo "$(date): ==================================="
+echo "$(date): DisplayPort Auto-Switch Complete"
+echo "$(date): ==================================="
 """
     
     # Step 1: Create udev rule file
@@ -747,8 +840,47 @@ echo "$(date): Display switch completed"
     except subprocess.CalledProcessError as e:
         return False, f"Failed to reload udev rules: {e}"
     
-    print("✓ DisplayPort auto-switching setup completed")
-    print("Test by plugging/unplugging DisplayPort monitor")
+    # Step 5: Trigger udev rules to ensure they're active
+    print("Triggering udev rules for DRM subsystem...")
+    try:
+        subprocess.run(['sudo', 'udevadm', 'trigger', '--subsystem-match=drm'], check=True)
+        print("✓ udev rules triggered")
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to trigger udev rules: {e}"
+    
+    # Step 6: Create systemd service to ensure script runs on boot (backup method)
+    print("Creating systemd service for boot-time display detection...")
+    service_content = """[Unit]
+Description=DisplayPort Auto-Switch Boot Service
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/display-switch.sh
+RemainAfterExit=yes
+TimeoutStartSec=60
+
+[Install]
+WantedBy=graphical.target
+"""
+    
+    try:
+        subprocess.run(['sudo', 'tee', '/etc/systemd/system/displayport-autoswitch.service'], 
+                      input=service_content.encode(), check=True, capture_output=True)
+        subprocess.run(['sudo', 'systemctl', 'daemon-reload'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'enable', 'displayport-autoswitch.service'], check=True)
+        print("✓ Boot service created and enabled")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠ Warning: Failed to create boot service: {e}")
+    
+    print("\n✓ DisplayPort auto-switching setup completed")
+    print("Features enabled:")
+    print("  • Real-time hotplug detection via udev rules")
+    print("  • Enhanced X server detection with multiple fallback methods")
+    print("  • Boot-time display detection service")
+    print("  • Detailed logging to /tmp/display-switch.log")
+    print("\nTest by plugging/unplugging DisplayPort monitor")
     
     return True, ""
 
@@ -860,9 +992,10 @@ def show_main_menu():
     print("="*50)
     print("[1] Install Packages")
     print("[2] Settings")
+    print("[q] Quit")
     print("="*50)
     
-    choice = input("Enter your choice (1 or 2): ").strip()
+    choice = input("Enter your choice (1, 2, or q): ").strip()
     return choice
 
 def show_package_menu():
@@ -909,12 +1042,13 @@ def show_settings_menu():
     print(f"[2] Create Firefox private dmenu item [{firefox_status}]")
     print(f"[3] Setup DisplayPort auto-switching [{displayport_status}]")
     print(f"[4] Setup Power Management (screen 3min/hibernate 15min) [{power_status}]")
+    print("[all] Run all settings")
     print("[b] Back to main menu")
     print("="*60)
     print("Status: [O] Installed, [X] Not installed, [N] Not available")
     print("="*60)
     
-    choice = input("Enter your choice (1, 2, 3, 4, or 'b'): ").strip()
+    choice = input("Enter your choice (1, 2, 3, 4, 'all', or 'b'): ").strip()
     return choice
 
 def main():
@@ -987,7 +1121,10 @@ def main():
     while True:
         main_choice = show_main_menu()
         
-        if main_choice == '1':
+        if main_choice.lower() == 'q':
+            print("\nExiting...")
+            break
+        elif main_choice == '1':
             # Package installation menu
             while True:
                 choice = show_package_menu()
@@ -999,26 +1136,31 @@ def main():
                 else:
                     selected = [x.strip() for x in choice.split(',')]
                 
-                # Skip processing if user chose to go back
-                if choice.lower() != 'b':
-                    for selection in selected:
-                        if selection in package_functions:
-                            print(f"\n--- Executing option {selection} ---")
-                            success, error = package_functions[selection](packages)
-                            if success == "BACK":
-                                # User chose back in external packages menu
-                                continue
-                            elif success:
-                                print(f"✓ Option {selection} completed successfully")
-                            else:
-                                print(f"✗ Option {selection} failed: {error}")
-                                break
+                # Process selections
+                any_failed = False
+                for selection in selected:
+                    if selection in package_functions:
+                        print(f"\n--- Executing option {selection} ---")
+                        success, error = package_functions[selection](packages)
+                        if success == "BACK":
+                            # User chose back in external packages menu
+                            continue
+                        elif success:
+                            print(f"✓ Option {selection} completed successfully")
                         else:
-                            print(f"Invalid option: {selection}")
-                    
-                    continue_choice = input("\nDo you want to continue with package installation? (y/n): ").strip().lower()
+                            print(f"✗ Option {selection} failed: {error}")
+                            any_failed = True
+                    else:
+                        print(f"Invalid option: {selection}")
+                        any_failed = True
+                
+                # Only ask to continue if there were errors or user wants to do more
+                if any_failed:
+                    continue_choice = input("\nContinue despite errors? (y/n): ").strip().lower()
                     if continue_choice != 'y':
                         break
+                else:
+                    input("\nPress Enter to continue...")
                     
         elif main_choice == '2':
             # Settings menu
@@ -1027,26 +1169,38 @@ def main():
                 
                 if choice.lower() == 'b':
                     break  # Go back to main menu
+                elif choice.lower() == 'all':
+                    selected = ['1', '2', '3', '4']
                 elif choice in settings_functions:
-                    print(f"\n--- Executing setting {choice} ---")
-                    success, error = settings_functions[choice]()
-                    if success:
-                        print(f"✓ Setting {choice} completed successfully")
-                    else:
-                        print(f"✗ Setting {choice} failed: {error}")
+                    selected = [choice]
                 else:
                     print(f"Invalid option: {choice}")
+                    continue
                 
-                continue_choice = input("\nDo you want to continue with settings? (y/n): ").strip().lower()
-                if continue_choice != 'y':
-                    break
+                # Process settings selections
+                any_failed = False
+                for selection in selected:
+                    if selection in settings_functions:
+                        print(f"\n--- Executing setting {selection} ---")
+                        success, error = settings_functions[selection]()
+                        if success:
+                            print(f"✓ Setting {selection} completed successfully")
+                        else:
+                            print(f"✗ Setting {selection} failed: {error}")
+                            any_failed = True
+                    else:
+                        print(f"Invalid option: {selection}")
+                        any_failed = True
+                
+                # Only ask to continue if there were errors
+                if any_failed:
+                    continue_choice = input("\nContinue despite errors? (y/n): ").strip().lower()
+                    if continue_choice != 'y':
+                        break
+                else:
+                    input("\nPress Enter to continue...")
         else:
-            print("Invalid option. Please choose 1 or 2.")
-            continue
-        
-        main_continue = input("\nReturn to main menu? (y/n): ").strip().lower()
-        if main_continue != 'y':
-            break
+            print("Invalid option. Please choose 1, 2, or q.")
 
 if __name__ == "__main__":
     main()
