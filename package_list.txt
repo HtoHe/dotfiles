@@ -2,6 +2,9 @@
 build-essential
 git
 rsync
+manpages-dev
+glibc-doc
+manpages-posix-dev
 
 [emacs]
 libgccjit-12-dev
@@ -24,12 +27,15 @@ libtiff-dev
 
 [dwm]
 xorg
+feh
 libx11-dev
 libxft-dev
 libxinerama-dev
 libxrandr-dev
 libimlib2-dev
 xautolock
+libx11-xcb-dev
+libxcb-res0-dev
 
 [utils]
 firefox-esr
