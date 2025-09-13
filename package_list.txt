@@ -33,7 +33,7 @@ libxft-dev
 libxinerama-dev
 libxrandr-dev
 libimlib2-dev
-xautolock
+xss-lock
 libx11-xcb-dev
 libxcb-res0-dev
 

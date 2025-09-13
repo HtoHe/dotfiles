@@ -101,7 +101,7 @@ def get_latest_emacs_version():
         html = response.read().decode('utf-8')
         
         # Find all emacs version links (emacs-X.Y.tar.gz format)
-        version_pattern = r'emacs-(\d+\.\d+(?:\.\d+)?).tar.gz'
+        version_pattern = r'emacs-([0-9]+\.[0-9]+(?:\.[0-9]+)?).tar.gz'
         matches = re.findall(version_pattern, html)
         
         if matches:
@@ -139,9 +139,9 @@ def install_emacs(packages):
     
     # Define mirror list in order of preference
     mirrors = [
+        f"https://ftp.kaist.ac.kr/gnu/emacs/emacs-{version}.tar.gz",
         f"https://ftp.gnu.org/gnu/emacs/emacs-{version}.tar.gz",
         f"https://ftp.jaist.ac.jp/pub/GNU/emacs/emacs-{version}.tar.gz",
-        f"https://ftp.kaist.ac.kr/gnu/emacs/emacs-{version}.tar.gz",
         f"https://ftpmirror.gnu.org/emacs/emacs-{version}.tar.gz"
     ]
     
@@ -151,9 +151,10 @@ def install_emacs(packages):
     for i, url in enumerate(mirrors):
         mirror_name = url.split('/')[2]  # Extract domain name
         print(f"Trying mirror {i+1}/{len(mirrors)}: {mirror_name}")
+        print(f"URL: {url}")
         try:
             # Use timeout of 60 seconds per attempt and show progress
-            subprocess.run(['wget', '--timeout=60', '--tries=2', '--progress=dot:giga', 
+            subprocess.run(['wget', '--timeout=60', '--tries=2', '--progress=dot:giga',
                           url, '-O', download_path], check=True, text=True)
             print("✓ Emacs downloaded successfully")
             download_success = True
@@ -326,10 +327,10 @@ def install_bluetuith():
     
     print(f"Using custom GOPATH: {go_path}")
     
-    # Install bluetuith using go install
+    # Install bluetuith using go install (updated repository path)
     print("Installing bluetuith...")
     try:
-        subprocess.run(['go', 'install', 'github.com/bluetuith-org/bluetuith@latest'], 
+        subprocess.run(['go', 'install', 'github.com/darkhz/bluetuith@latest'],
                       check=True, capture_output=True, text=True, env=env)
         print("✓ bluetuith installed successfully")
     except subprocess.CalledProcessError as e:
