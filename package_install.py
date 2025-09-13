@@ -97,7 +97,7 @@ def get_latest_emacs_version():
     """Fetch the latest Emacs version from ftp.gnu.org"""
     try:
         print("Fetching latest Emacs version...")
-        response = urllib.request.urlopen('https://ftp.gnu.org/gnu/emacs/')
+        response = urllib.request.urlopen('https://ftp.gnu.org/gnu/emacs/', timeout=10)
         html = response.read().decode('utf-8')
         
         # Find all emacs version links (emacs-X.Y.tar.gz format)
@@ -133,17 +133,39 @@ def install_emacs(packages):
     if not version:
         version = latest_version
     
-    # Download Emacs
-    url = f"https://ftp.gnu.org/gnu/emacs/emacs-{version}.tar.gz"
+    # Download Emacs with backup mirrors
     download_path = f"/tmp/emacs-{version}.tar.gz"
     extract_path = f"/tmp/emacs-{version}"
     
+    # Define mirror list in order of preference
+    mirrors = [
+        f"https://ftp.gnu.org/gnu/emacs/emacs-{version}.tar.gz",
+        f"https://ftp.jaist.ac.jp/pub/GNU/emacs/emacs-{version}.tar.gz",
+        f"https://ftp.kaist.ac.kr/gnu/emacs/emacs-{version}.tar.gz",
+        f"https://ftpmirror.gnu.org/emacs/emacs-{version}.tar.gz"
+    ]
+    
     print(f"Downloading Emacs {version}...")
-    try:
-        subprocess.run(['wget', url, '-O', download_path], check=True, capture_output=True, text=True)
-        print("✓ Emacs downloaded successfully")
-    except subprocess.CalledProcessError as e:
-        return False, f"Failed to download Emacs: {e.stderr}"
+    download_success = False
+    
+    for i, url in enumerate(mirrors):
+        mirror_name = url.split('/')[2]  # Extract domain name
+        print(f"Trying mirror {i+1}/{len(mirrors)}: {mirror_name}")
+        try:
+            # Use timeout of 60 seconds per attempt and show progress
+            subprocess.run(['wget', '--timeout=60', '--tries=2', '--progress=dot:giga', 
+                          url, '-O', download_path], check=True, text=True)
+            print("✓ Emacs downloaded successfully")
+            download_success = True
+            break
+        except subprocess.CalledProcessError as e:
+            print(f"✗ Failed from {mirror_name}: {e.returncode}")
+            if i < len(mirrors) - 1:  # Not the last mirror
+                print("  Trying next mirror...")
+            continue
+    
+    if not download_success:
+        return False, f"Failed to download Emacs from all mirrors"
     
     # Extract
     print("Extracting Emacs...")
