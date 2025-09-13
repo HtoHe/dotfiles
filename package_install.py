@@ -57,7 +57,7 @@ def install_dwm_dependencies(packages):
         return False, error
     
     # Check for suckless programs
-    suckless_path = os.path.expanduser("~/projects/programs/suckless/")
+    suckless_path = os.path.expanduser("~/programs/suckless/")
     if not os.path.exists(suckless_path):
         return False, f"Suckless directory not found: {suckless_path}"
     

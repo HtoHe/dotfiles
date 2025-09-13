@@ -7,7 +7,7 @@ glibc-doc
 manpages-posix-dev
 
 [emacs]
-libgccjit-12-dev
+libgccjit0
 zlib1g-dev
 libgnutls28-dev
 pkg-config
