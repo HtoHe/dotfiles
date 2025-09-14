@@ -187,8 +187,8 @@ def install_emacs(packages):
     # Configure
     print("Configuring Emacs...")
     try:
-        subprocess.run(['./configure', '--with-x-toolkit=gtk3', '--with-native-compilation', 
-                        '--with-json', '--with-tree-sitter', '--with-cairo', '--with-modules', '--with-xml2'], 
+        subprocess.run(['./configure', '--with-x-toolkit=gtk3', '--with-native-compilation',
+                        '--with-tree-sitter', '--with-cairo', '--with-modules', '--with-xml2'],
                       cwd=extract_path, check=True, capture_output=True, text=True)
         print("✓ Emacs configured successfully")
     except subprocess.CalledProcessError as e:
