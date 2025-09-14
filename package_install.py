@@ -187,9 +187,14 @@ def install_emacs(packages):
     # Configure
     print("Configuring Emacs...")
     try:
+        # Set environment variables for libgccjit detection
+        env = os.environ.copy()
+        env['CPPFLAGS'] = '-I/usr/lib/gcc/x86_64-linux-gnu/12/include'
+        env['LDFLAGS'] = '-L/usr/lib/gcc/x86_64-linux-gnu/12'
+
         subprocess.run(['./configure', '--with-x-toolkit=gtk3', '--with-native-compilation',
                         '--with-tree-sitter', '--with-cairo', '--with-modules', '--with-xml2'],
-                      cwd=extract_path, check=True, capture_output=True, text=True)
+                      cwd=extract_path, check=True, capture_output=True, text=True, env=env)
         print("✓ Emacs configured successfully")
     except subprocess.CalledProcessError as e:
         return False, f"Failed to configure Emacs: {e.stderr}"
