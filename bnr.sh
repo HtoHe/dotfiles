@@ -5,7 +5,7 @@ CLIENT=("$HOME/documents/" "$HOME/projects/")
 
 mkdir -p "${CLIENT[@]}"
 
-ARG="--verbose --recursive --copy-links --hard-links -P --perms --times --delete --update"
+ARG="--verbose --recursive --copy-links --hard-links -P --perms --times --delete --update --exclude-from=excludes.txt"
 
 LOG=./bnr.log
 
