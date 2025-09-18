@@ -49,7 +49,7 @@
 ;;(require 'rust-mode)
 
 ;;(pdf-tools-install)  ; Standard activation command
-(pdf-loader-install) ; On demand loading, leads to faster startup time
+;;(pdf-loader-install) ; On demand loading, leads to faster startup time
 
 ;;(use-package pdf-view-restore
 ;;  :after pdf-tools
@@ -115,5 +115,5 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(magit pdf-tools zenburn-theme))
+ '(package-selected-packages '(zenburn-theme))
  '(warning-suppress-types '((comp))))
