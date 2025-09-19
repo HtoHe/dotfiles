@@ -49,7 +49,7 @@
 ;;(require 'rust-mode)
 
 ;;(pdf-tools-install)  ; Standard activation command
-;;(pdf-loader-install) ; On demand loading, leads to faster startup time
+(pdf-loader-install) ; On demand loading, leads to faster startup time
 
 ;;(use-package pdf-view-restore
 ;;  :after pdf-tools
