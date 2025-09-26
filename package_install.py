@@ -767,9 +767,9 @@ perform_display_switch() {
         echo "$(date):   $line"
     done
     
-    # Check for connected DisplayPort
+    # Check for connected DisplayPort (excluding eDP-1 which is laptop screen)
     local dp_outputs
-    dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])* connected" | awk '{print $1}')
+    dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])* connected" | grep -v "eDP-1" | awk '{print $1}')
     
     if [ -n "$dp_outputs" ]; then
         # DisplayPort connected - switch to external display
@@ -791,7 +791,7 @@ perform_display_switch() {
         
         # Turn off all DisplayPort outputs and enable laptop display
         local all_dp_outputs
-        all_dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])*" | awk '{print $1}')
+        all_dp_outputs=$(echo "$current_displays" | grep -E "DP-[0-9](-[0-9])*" | grep -v "eDP-1" | awk '{print $1}')
         
         for dp in $all_dp_outputs; do
             timeout 10 sudo -u "$user" -E /usr/bin/xrandr --output "$dp" --off 2>/dev/null
@@ -814,6 +814,18 @@ perform_display_switch() {
 echo "$(date): ==================================="
 echo "$(date): DisplayPort Auto-Switch Starting"
 echo "$(date): ==================================="
+
+# Prevent concurrent executions
+LOCKFILE="/tmp/display-switch.lock"
+if [ -f "$LOCKFILE" ]; then
+    LOCK_PID=$(cat "$LOCKFILE" 2>/dev/null)
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "$(date): Script already running (PID: $LOCK_PID), exiting"
+        exit 0
+    fi
+fi
+echo $$ > "$LOCKFILE"
+trap "rm -f $LOCKFILE" EXIT
 
 # Wait for X server to be available
 if ! wait_for_x_server; then
