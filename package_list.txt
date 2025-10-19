@@ -4,7 +4,6 @@ git
 rsync
 manpages-dev
 glibc-doc
-manpages-posix-dev
 
 [emacs]
 libgccjit-12-dev
@@ -46,3 +45,4 @@ links
 wget
 vim
 zathura
+curl

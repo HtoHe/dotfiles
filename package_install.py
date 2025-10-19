@@ -29,12 +29,12 @@ def install_packages(package_list, section_name):
     """Install packages using apt and return success status with error message"""
     print(f"Installing {section_name} packages...")
     try:
-        subprocess.run(['sudo', 'apt', 'install', '-y'] + package_list, 
-                      check=True, capture_output=True, text=True)
+        subprocess.run(['sudo', 'apt', 'install', '-y'] + package_list,
+                      check=True)
         print(f"✓ {section_name} packages installed successfully")
         return True, ""
     except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to install {section_name} packages: {e.stderr}"
+        error_msg = f"Failed to install {section_name} packages"
         print(f"✗ {error_msg}")
         return False, error_msg
 
@@ -316,11 +316,11 @@ def install_bluetuith():
     # Install dependencies
     deps = ['golang-go', 'bluez', 'bluetooth', 'pulseaudio-module-bluetooth', 'wget']
     try:
-        subprocess.run(['sudo', 'apt', 'install', '-y'] + deps, 
-                      check=True, capture_output=True, text=True)
+        subprocess.run(['sudo', 'apt', 'install', '-y'] + deps,
+                      check=True)
         print("✓ bluetuith dependencies installed successfully")
     except subprocess.CalledProcessError as e:
-        return False, f"Failed to install bluetuith dependencies: {e.stderr}"
+        return False, f"Failed to install bluetuith dependencies"
     
     # Set up Go environment with custom GOPATH
     go_path = os.path.expanduser("~/.local/share/go")
@@ -370,14 +370,14 @@ def install_ncpamixer():
     print("Installing ncpamixer dependencies...")
     
     # Install dependencies
-    deps = ['libpulse-dev', 'libncurses5-dev', 'libncursesw5-dev', 'cmake', 
+    deps = ['libpulse-dev', 'libncurses5-dev', 'libncursesw5-dev', 'cmake',
             'pulseaudio', 'build-essential', 'git', 'pandoc']
     try:
-        subprocess.run(['sudo', 'apt', 'install', '-y'] + deps, 
-                      check=True, capture_output=True, text=True)
+        subprocess.run(['sudo', 'apt', 'install', '-y'] + deps,
+                      check=True)
         print("✓ ncpamixer dependencies installed successfully")
     except subprocess.CalledProcessError as e:
-        return False, f"Failed to install ncpamixer dependencies: {e.stderr}"
+        return False, f"Failed to install ncpamixer dependencies"
     
     # Clone ncpamixer repository
     temp_dir = "/tmp/ncpamixer"
@@ -585,6 +585,26 @@ def check_displayport_status():
             return 'X'  # Files exist but script not executable
     else:
         return 'X'  # Files don't exist
+
+def check_nanum_font_status():
+    """Check if NanumGothicCoding font is installed"""
+    # Check if font exists in system font directories
+    font_dirs = [
+        '/usr/share/fonts/',
+        '/usr/local/share/fonts/',
+        os.path.expanduser('~/.local/share/fonts/'),
+        os.path.expanduser('~/.fonts/')
+    ]
+
+    for font_dir in font_dirs:
+        if os.path.exists(font_dir):
+            # Search for NanumGothicCoding font files
+            for root, dirs, files in os.walk(font_dir):
+                for file in files:
+                    if 'NanumGothicCoding' in file and file.endswith(('.ttf', '.otf')):
+                        return 'O'  # Font found
+
+    return 'X'  # Font not found
 
 def check_power_management_status():
     """Check if power management (screen timeout + hibernate) is configured"""
@@ -924,6 +944,73 @@ WantedBy=graphical.target
     
     return True, ""
 
+def install_nanum_font():
+    """Install NanumGothicCoding font for Korean text support"""
+    print("Installing NanumGothicCoding font...")
+
+    # Create user fonts directory if it doesn't exist
+    font_dir = os.path.expanduser('~/.local/share/fonts/nanum')
+    os.makedirs(font_dir, exist_ok=True)
+
+    # Download NanumGothicCoding font from official source
+    font_url = "https://github.com/naver/nanumfont/releases/download/VER2.5/NanumGothicCoding-2.5.zip"
+    download_path = "/tmp/NanumGothicCoding.zip"
+
+    print("Downloading NanumGothicCoding font...")
+    try:
+        subprocess.run(['wget', '--timeout=60', '--tries=3',
+                       font_url, '-O', download_path], check=True)
+        print("✓ Font downloaded successfully")
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to download font: {e}"
+
+    # Extract the font
+    print("Extracting font files...")
+    try:
+        subprocess.run(['unzip', '-o', download_path, '-d', '/tmp/nanum_temp'], check=True)
+        print("✓ Font extracted successfully")
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to extract font: {e}"
+
+    # Copy font files to user font directory
+    print("Installing font files...")
+    try:
+        # Find and copy all .ttf files from the extracted directory
+        extracted_dir = '/tmp/nanum_temp'
+        ttf_files = glob.glob(f'{extracted_dir}/**/*.ttf', recursive=True)
+
+        if not ttf_files:
+            return False, "No .ttf font files found in the downloaded archive"
+
+        for ttf_file in ttf_files:
+            subprocess.run(['cp', ttf_file, font_dir], check=True)
+
+        print(f"✓ Copied {len(ttf_files)} font file(s) to {font_dir}")
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to copy font files: {e}"
+
+    # Update font cache
+    print("Updating font cache...")
+    try:
+        subprocess.run(['fc-cache', '-f', '-v'], check=True)
+        print("✓ Font cache updated successfully")
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to update font cache: {e}"
+
+    # Cleanup
+    print("Cleaning up temporary files...")
+    try:
+        subprocess.run(['rm', '-rf', download_path, '/tmp/nanum_temp'], check=True)
+        print("✓ Cleanup completed")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠ Warning: Failed to cleanup temporary files: {e}")
+
+    print("\n✓ NanumGothicCoding font installation completed!")
+    print(f"Font installed to: {font_dir}")
+    print("The font is now available for use in applications like Emacs")
+
+    return True, ""
+
 def setup_power_management():
     """Setup power management: screen off after 3 minutes, hibernate after 15 minutes"""
     xset_path = subprocess.run(['which', 'xset'], capture_output=True, text=True)
@@ -1074,7 +1161,8 @@ def show_settings_menu():
     firefox_status = check_firefox_private_status()
     displayport_status = check_displayport_status()
     power_status = check_power_management_status()
-    
+    nanum_font_status = check_nanum_font_status()
+
     print("\n" + "="*60)
     print("SETTINGS")
     print("="*60)
@@ -1082,13 +1170,14 @@ def show_settings_menu():
     print(f"[2] Create Firefox private dmenu item [{firefox_status}]")
     print(f"[3] Setup DisplayPort auto-switching [{displayport_status}]")
     print(f"[4] Setup Power Management (screen 3min/hibernate 15min) [{power_status}]")
+    print(f"[5] Install NanumGothicCoding font (Korean) [{nanum_font_status}]")
     print("[all] Run all settings")
     print("[b] Back to main menu")
     print("="*60)
     print("Status: [O] Installed, [X] Not installed, [N] Not available")
     print("="*60)
-    
-    choice = input("Enter your choice (1, 2, 3, 4, 'all', or 'b'): ").strip()
+
+    choice = input("Enter your choice (1-5, 'all', or 'b'): ").strip()
     return choice
 
 def main():
@@ -1155,7 +1244,8 @@ def main():
         '1': lambda: setup_emacs_server(),
         '2': lambda: setup_firefox_private(),
         '3': lambda: setup_displayport_switching(),
-        '4': lambda: setup_power_management()
+        '4': lambda: setup_power_management(),
+        '5': lambda: install_nanum_font()
     }
     
     while True:
@@ -1210,7 +1300,7 @@ def main():
                 if choice.lower() == 'b':
                     break  # Go back to main menu
                 elif choice.lower() == 'all':
-                    selected = ['1', '2', '3', '4']
+                    selected = ['1', '2', '3', '4', '5']
                 elif choice in settings_functions:
                     selected = [choice]
                 else:
